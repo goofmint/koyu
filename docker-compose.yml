@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  app:
+    build: ./app
+    container_name: app
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app:/app
+      - /app/node_modules
+    depends_on:
+      - parse-server
+    command: npm run dev -- --host -p 3000
+
+  parse-server:
+    image: parseplatform/parse-server:latest
+    container_name: parse-server
+    env_file:
+      - .env
+    environment:
+      - PARSE_SERVER_DATABASE_URI=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - PARSE_SERVER_APPLICATION_ID=${PARSE_APP_ID}
+      - PARSE_SERVER_MASTER_KEY=${PARSE_MASTER_KEY}
+      - PARSE_SERVER_PORT=${PARSE_SEVER_PORT}
+    ports:
+      - "1337:1337"
+    volumes:
+      - ./cloud:/parse-server/cloud
+    depends_on:
+      - postgres
+
+  parse-dashboard:
+    image: 'parseplatform/parse-dashboard'
+    ports:
+      - '4040:4040'
+    env_file:
+      - .env
+    environment:
+      - PARSE_DASHBOARD_ALLOW_INSECURE_HTTP=true
+      - PARSE_DASHBOARD_SERVER_URL=${PARSE_SERVER_URL}
+      - PARSE_DASHBOARD_MASTER_KEY=${PARSE_MASTER_KEY}
+      - PARSE_DASHBOARD_APP_ID=${PARSE_APP_ID}
+      - PARSE_DASHBOARD_APP_NAME=${PARSE_APP_NAME}
+    links:
+      - parse-server
+  postgres:
+    image: postgres:latest
+    env_file:
+      - .env
+    container_name: postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
